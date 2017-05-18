@@ -31,15 +31,17 @@ def main():
 
     initialised = False
     for idx, run in tqdm(runs.iterrows(), total=len(runs)):
-        night = run.night_date.date()
+        night = int('%Y%m%d'.format(run.night_date.date()))
         base = datepath(args.ganymed_base, night)
 
         ganymed_file = os.path.join(
             base,
-            '{:%Y%m%d}_{:03d}-summary.root'.format(night, run.run_id)
+            '{}_{:03d}-summary.root'.format(night, run.run_id)
         )
 
         df = read_mars(ganymed_file, tree='Events')
+        df['night'] = night
+        df['run_id'] = run.run_id
 
         if not initialised:
             to_h5py(args.outputfile, df, key='events', mode='w')
