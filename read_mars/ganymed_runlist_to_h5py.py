@@ -15,7 +15,7 @@ import os
 from . import read_mars, datepath
 
 
-parser = ArgumentParser(help=__doc__)
+parser = ArgumentParser(description=__doc__)
 parser.add_argument('runlist')
 parser.add_argument('outputfile')
 parser.add_argument(
