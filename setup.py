@@ -13,7 +13,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ganymed_runlist_to_h5py = read_mars.ganymed_runlist_to_h5py:main',
-            'ganymed_to_h5py = read_mars.ganymed_to_h5py:main',
+            'mars_to_h5py = read_mars.mars_to_h5py:main',
         ]
     }
 )
