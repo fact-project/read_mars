@@ -31,7 +31,7 @@ def main():
 
     initialised = False
     for idx, run in tqdm(runs.iterrows(), total=len(runs)):
-        night = int('%Y%m%d'.format(run.night_date.date()))
+        night = int('{:%Y%m%d}'.format(run.night_date))
         base = datepath(args.ganymed_base, night)
 
         ganymed_file = os.path.join(
