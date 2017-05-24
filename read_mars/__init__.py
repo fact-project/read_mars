@@ -1,7 +1,8 @@
 import ROOT
 import pandas as pd
 import os
-from tqdm import tqdm
+
+from .core import read_mars_to_list
 
 
 result = ROOT.gSystem.Load('libmars.so')
@@ -20,25 +21,5 @@ def datepath(base, date):
     )
 
 
-def read_mars(filename, tree='Events', verbose=False):
-    f = ROOT.TFile(filename)
-    tree = f.Get(tree)
-    n_events = tree.GetEntries()
-
-    leaves = [
-        l.GetName()
-        for l in tree.GetListOfLeaves()
-        if not l.GetName().endswith('.')
-    ]
-
-    events = []
-    for i in tqdm(range(n_events), disable=not verbose):
-        tree.GetEntry(i)
-
-        events.append({})
-        for leaf in leaves:
-            events[-1][leaf] = tree.GetLeaf(leaf).GetValue()
-
-    f.Close()
-
-    return pd.DataFrame(events)
+def read_mars(filename, treename='Events'):
+    return pd.DataFrame(read_mars_to_list(filename, treename))

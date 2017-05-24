@@ -1,4 +1,5 @@
 from setuptools import setup
+from Cython.Build import cythonize
 
 
 setup(
@@ -10,6 +11,7 @@ setup(
     install_requires=[
         'pyfact>=0.9.4',
     ],
+    ext_modules=cythonize('read_mars/core.pyx'),
     entry_points={
         'console_scripts': [
             'ganymed_runlist_to_h5py = read_mars.ganymed_runlist_to_h5py:main',
