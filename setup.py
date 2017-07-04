@@ -9,6 +9,8 @@ setup(
     packages=['read_mars'],
     install_requires=[
         'pyfact>=0.9.4',
+        'pandas',
+        'numpy',
     ],
     entry_points={
         'console_scripts': [
