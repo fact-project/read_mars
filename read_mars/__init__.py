@@ -34,6 +34,25 @@ def is_valid_leaf(leaf):
     ))
 
 
+def leaves_to_numpy(tree, leaf_names):
+    # Looping over all events of a root file from python is extremely slow.
+    # As the Draw function also loops over all events and
+    # stores the values of the leaf in the memory,
+    # only very few root function calls from python are used.
+    # "" means, that no cut is applied and the "goff" option disables graphics.
+    # GetV1() returns a pointer or memory view of the values of the leaf.
+    # See eg. https://root.cern.ch/root/roottalk/roottalk03/0638.html
+    n_events = tree.GetEntries()
+    tree.SetEstimate(n_events + 1)  # necessary for files with more than 1 M events
+    out = {}
+    for leaf_name in leaf_names:
+        tree.Draw(leaf_name, "", "goff")
+        v1 = tree.GetV1()
+        v1.SetSize(n_events * 8)  # a double has 8 Bytes
+
+        out[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64')
+
+
 def read_mars(filename, tree='Events', leaf_names=None):
     """Return a Pandas DataFrame of a MARS (eg. star or ganymed output) root file.
 
@@ -53,26 +72,7 @@ def read_mars(filename, tree='Events', leaf_names=None):
             for leaf in filter(is_valid_leaf, tree.GetListOfLeaves())
         ]
 
-    n_events = tree.GetEntries()
-    tree.SetEstimate(n_events + 1)  # necessary for files with more than 1 M events
-
-    df = pd.DataFrame()
-    for leaf_name in leaf_names:
-
-        # Looping over all events of a root file from python is extremely slow.
-        # As the Draw function also loops over all events and
-        # stores the values of the leaf in the memory,
-        # only very few root function calls from python are used.
-        # "" means, that no cut is applied and the "goff" option disables graphics.
-        # GetV1() returns a pointer or memory view of the values of the leaf.
-        # See eg. https://root.cern.ch/root/roottalk/roottalk03/0638.html
-
-        tree.Draw(leaf_name, "", "goff")
-        v1 = tree.GetV1()
-        v1.SetSize(n_events * 8)  # a double has 8 Bytes
-
-        df[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64')
-
+    df = pd.DataFrame(leaves_to_numpy(tree, leaf_names))
     file.Close()
 
     return df
