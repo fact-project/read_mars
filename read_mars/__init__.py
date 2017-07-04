@@ -58,6 +58,7 @@ def read_mars(filename, tree='Events', leaf_names=None):
 
     read_mars uses the TTree.Draw() function to prevent calling each leaf of each event
     with a lot of overhead from python. It also omits the useless leaves fBits and fUniqueID.
+    Files with MSignalCam containers (callisto output) can not be read.
     Keyword arguments:
     tree -- Set, which tree to read. (Default = "Events")
     leaf_names -- Specify a list of leaf_names. (Default is None, what reads in all leaf_names)
