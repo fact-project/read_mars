@@ -49,8 +49,8 @@ def leaves_to_numpy(tree, leaf_names):
         tree.Draw(leaf_name, "", "goff")
         v1 = tree.GetV1()
         v1.SetSize(n_events * 8)  # a double has 8 Bytes
-
         out[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64')
+    return out
 
 
 def read_mars(filename, tree='Events', leaf_names=None):
