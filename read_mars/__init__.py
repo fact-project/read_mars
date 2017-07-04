@@ -1,7 +1,6 @@
 import ROOT
 import pandas as pd
 import os
-from tqdm import tqdm
 
 
 result = ROOT.gSystem.Load('libmars.so')
@@ -20,57 +19,48 @@ def datepath(base, date):
     )
 
 
-def read_mars(filename, tree='Events', verbose=False):
-    f = ROOT.TFile(filename)
-    tree = f.Get(tree)
-    n_events = tree.GetEntries()
+def read_mars(filename, tree='Events', leaves=[]):
+    """Return a Pandas DataFrame of a MARS (eg. star or ganymed output) root file.
 
-    leaves = [
-        l.GetName()
-        for l in tree.GetListOfLeaves()
-        if not l.GetName().endswith('.')
-    ]
-
-    events = []
-    for i in tqdm(range(n_events), disable=not verbose):
-        tree.GetEntry(i)
-
-        events.append({})
-        for leaf in leaves:
-            events[-1][leaf] = tree.GetLeaf(leaf).GetValue()
-
-    f.Close()
-
-    return pd.DataFrame(events)
-
-
-def read_mars_fast(filename, tree='Events', leaves=[]):
-    """Return a Pandas DataFrame of a star or ganymed output root file.
-    
-    A faster (~factor 15) version of read_mars. It also omits the useless leaves fBits and fUniqueID. 
+    read_mars uses the TTree.Draw() function to prevent calling each leaf of each event
+    with a lot of overhead from python. It also omits the useless leaves fBits and fUniqueID. 
     Keyword arguments:
     tree -- Set, which tree to read. (Default = "Events")
     leaves -- Specify a list of leaves. (Default is [], what reads in all leaves)
     """
 
-    f = ROOT.TFile(filename)
-    tree = f.Get(tree)
+    file = ROOT.TFile(filename)
+    tree = file.Get(tree)
     if not leaves:
-        leaves = [l.GetName() for l in tree.GetListOfLeaves() if
-            not (l.GetName().endswith('.') or l.GetName().endswith('fBits') or l.GetName().endswith('fUniqueID'))]
+        leaves = [leaf.GetName() for leaf in tree.GetListOfLeaves() if not (
+            leaf.GetName().endswith('.') or leaf.GetName().endswith('fBits') or leaf.GetName().endswith(
+                'fUniqueID'))]
 
     n_events = tree.GetEntries()
-    tree.SetEstimate(n_events + 1) #necessary for files with more than 1 M events
+    tree.SetEstimate(n_events + 1)  # necessary for files with more than 1 M events
     df = pd.DataFrame(np.empty([n_events, len(leaves)]), columns=leaves)
-    b = np.empty([n_events])
+    values = np.empty([n_events])
 
     for leaf in leaves:
+
+        # Looping over all events of a root file from python is extremely slow.
+        # As the Draw function also loops over all events and stores the values of the leaf in the memory,
+        # only very few root function calls from python are used.
+        # "" means, that no cut is applied and the "goff" option disables graphics.
+        # GetV1() returns a pointer or memory view of the values of the leaf.
+        # See eg. https://root.cern.ch/root/roottalk/roottalk03/0638.html
+
+        # The loop over the elements of v1 is necessary, because v1 doesn't support slices
+        # or array indexing. Because it always returns the same shape (regardless of n_events)
+        # numpy broadcasting doesn't work either.
+
         tree.Draw(leaf, "", "goff")
         v1 = tree.GetV1()
         v1.SetSize(n_events + 1)
-        for i in range(n_events):
-            b[i] = v1[i]
-        df[leaf] = b
-    f.Close()
+        for event in range(n_events):
+            values[event] = v1[event]
+        df[leaf] = values
+    file.Close()
 
     return df
+
