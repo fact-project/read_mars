@@ -34,21 +34,21 @@ def is_valid_leaf(leaf):
     ))
 
 
-def read_mars(filename, tree='Events', leaves=[]):
+def read_mars(filename, tree='Events', leaf_names=None):
     """Return a Pandas DataFrame of a MARS (eg. star or ganymed output) root file.
 
     read_mars uses the TTree.Draw() function to prevent calling each leaf of each event
     with a lot of overhead from python. It also omits the useless leaves fBits and fUniqueID.
     Keyword arguments:
     tree -- Set, which tree to read. (Default = "Events")
-    leaves -- Specify a list of leaves. (Default is [], what reads in all leaves)
+    leaf_names -- Specify a list of leaf_names. (Default is None, what reads in all leaf_names)
     """
 
     file = ROOT.TFile(filename)
     tree = file.Get(tree)
 
-    if not leaves:
-        leaves = [
+    if not leaf_names:
+        leaf_names = [
             leaf.GetName()
             for leaf in filter(is_valid_leaf, tree.GetListOfLeaves())
         ]
@@ -57,7 +57,7 @@ def read_mars(filename, tree='Events', leaves=[]):
     tree.SetEstimate(n_events + 1)  # necessary for files with more than 1 M events
 
     df = pd.DataFrame()
-    for leaf in leaves:
+    for leaf_name in leaf_names:
 
         # Looping over all events of a root file from python is extremely slow.
         # As the Draw function also loops over all events and
@@ -67,11 +67,11 @@ def read_mars(filename, tree='Events', leaves=[]):
         # GetV1() returns a pointer or memory view of the values of the leaf.
         # See eg. https://root.cern.ch/root/roottalk/roottalk03/0638.html
 
-        tree.Draw(leaf, "", "goff")
+        tree.Draw(leaf_name, "", "goff")
         v1 = tree.GetV1()
         v1.SetSize(n_events * 8)  # a double has 8 Bytes
 
-        df[leaf] = np.frombuffer(v1.tobytes(), dtype='float64')
+        df[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64')
 
     file.Close()
 
