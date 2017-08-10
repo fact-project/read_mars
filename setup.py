@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='read_mars',
-    version='0.0.4',
+    version='0.0.5',
     author='Maximilian Nöthe',
     author_email='maximilian.noethe@tu-dortmund.de',
     packages=['read_mars'],
@@ -11,6 +11,7 @@ setup(
         'pyfact>=0.9.4',
         'pandas',
         'numpy',
+        'root_numpy',
     ],
     entry_points={
         'console_scripts': [
