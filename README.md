@@ -18,7 +18,7 @@ into the python world.
 
 Reads the ROOT file and transforms the contained (and supported) ROOT objects to numpy arrays.
 
-Certain plots in a `MStatusDisplay` are addressed by use of `StatusDisplay.find()` 
+Certain plots in a `MStatusDisplay` are addressed by use of `StatusDisplay.find()`. A list of keys that are searchable, can be found in the representation of `StatusDisplay.find()`.
 
 Usage e.g.:
 ``` 
