@@ -18,10 +18,6 @@ def transform_TH(h):
     return hist2array(h, return_edges=True, include_overflow=True)
 
 
-def transform_TF1(tf1):
-    th1 = tf1.GetHistogram()
-    return transform_TH(th1)
-
 _p_names = ['name', 'class_name', 'canvas_name', 'pad_id_name']
 
 StatusDisplayKey = namedtuple(
@@ -47,7 +43,6 @@ class StatusDisplay:
             'TH2F': transform_TH,
             'TH2D': transform_TH,
             'TProfile': transform_TH,
-            'TF1': transform_TF1,
         }
 
         self._df = self.df()
