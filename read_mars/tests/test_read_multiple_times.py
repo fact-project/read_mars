@@ -18,7 +18,7 @@ def test_read_multiple():
         'read_mars',
         'tests/resources/20130930_244_244_B.root')
 
-    for i in range(30):
+    for i in range(500):
         with read_mars.StatusDisplay(path) as f:
             pass
 
