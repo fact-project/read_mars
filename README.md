@@ -35,4 +35,4 @@ plt.colorbar(img);
 ## Building ROOT 5 with anaconda and python 3.6
 
 See:
-https://github.com/fact-project/mars-docker#install-on-your-host
+https://github.com/fact-project/mars-docker#install-on-your-host-this-is-tested-on-ubuntu-1604-and-1704
