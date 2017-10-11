@@ -33,8 +33,9 @@ StatusDisplayKey = namedtuple(
 class StatusDisplay:
     def __init__(self, path, transform=True):
         self.path = path
-        self.date = fact.run2dt(self.path.split('/')[-1].split('_')[0]).date()
-        self.run = int(self.path.split('/')[-1].split('_')[1])
+        path_info = fact.path.parse(self.path)
+        self.data = fact.run2dt(str(path_info['night'])).date()
+        self.run = path_info['run']
 
         self.tfile = ROOT.TFile(path)
         self.status_array = self.tfile.Get('MStatusDisplay')
@@ -60,13 +61,14 @@ class StatusDisplay:
         return self[k]
 
     def df(self):
-        _df = []
-        for k in self.keys():
-            d = k._asdict()
-            d['object'] = self[k]
-            _df.append(d)
-        _df = pd.DataFrame(_df)
-        return _df
+        if not hasattr(self, '_df'):
+            _df = []
+            for k in self.keys():
+                d = k._asdict()
+                d['object'] = self[k]
+                _df.append(d)
+            self._df = pd.DataFrame(_df)
+        return self._df
 
     def __repr__(self):
         return repr(self._df)

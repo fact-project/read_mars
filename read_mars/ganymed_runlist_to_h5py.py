@@ -1,53 +1,47 @@
 '''
 Convert ganymed file into h5py hdf5
 
-Arguments:
+Usage: ganymed_runlist_to_h5py <runlist> <outputfile>
 
-    RUNLIST: a csv file with columns night,run_id
-    OUTPUTFILE: outputfilename
+Options:
+    --ganymed-base PATH    base path for ganymed filed [default: /gpfs0/fact/processing/data.r18753/ganymed_run/]
+
 '''
-from argparse import ArgumentParser
+from docopt import doctopt
+from functools import partial
 import pandas as pd
-from fact.io import to_h5py
 from tqdm import tqdm
-import os
 
-from . import read_mars, datepath
+import fact
+from fact.io import to_h5py
 
-
-parser = ArgumentParser(description=__doc__)
-parser.add_argument('runlist')
-parser.add_argument('outputfile')
-parser.add_argument(
-    '--ganymed-base', dest='ganymed_base',
-    default='/gpfs0/fact/processing/data.r18753/ganymed_run/'
-)
+from . import read_mars
 
 
 def main():
-    args = parser.parse_args()
-    runs = pd.read_csv(args.runlist)
-    runs['night_date'] = pd.to_datetime(runs['night'].astype(str), format='%Y%m%d')
+    args = doctopt(__doc__)
+    runs = pd.read_csv(args['<runlist>'])
+    runs['night'] = runs.night.astype(int)
+    runs['run_id'] = runs.run_id.astype(int)
+
+    ganymed_file_path_generator = partial(
+        fact.path.tree_path,
+        prefix=args['--ganymed-base'],
+        suffix='-summary.root',
+    )
 
     initialised = False
     for idx, run in tqdm(runs.iterrows(), total=len(runs)):
-        night = int('{:%Y%m%d}'.format(run.night_date))
-        base = datepath(args.ganymed_base, run.night_date)
-
-        ganymed_file = os.path.join(
-            base,
-            '{}_{:03d}-summary.root'.format(night, run.run_id)
-        )
-
-        df = read_mars(ganymed_file, tree='Events')
-        df['night'] = night
+        ganymed_file_path = ganymed_file_path_generator(run.night, run.run_id)
+        df = read_mars(ganymed_file_path, tree='Events')
+        df['night'] = run.night
         df['run_id'] = run.run_id
 
         if not initialised:
-            to_h5py(args.outputfile, df, key='events', mode='w')
+            to_h5py(args['<outputfile>'], df, key='events', mode='w')
             initialised = True
         else:
-            to_h5py(args.outputfile, df, key='events', mode='a')
+            to_h5py(args['<outputfile>'], df, key='events', mode='a')
 
 
 if __name__ == '__main__':

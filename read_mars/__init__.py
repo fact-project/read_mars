@@ -1,6 +1,5 @@
 import ROOT
 import pandas as pd
-import os
 import numpy as np
 
 result = ROOT.gSystem.Load('libmars.so')
@@ -10,15 +9,6 @@ if result != 0:
     )
 # import this only after libmars.so
 from .status_display import StatusDisplay
-
-
-def datepath(base, date):
-    return os.path.join(
-        base,
-        '{:04d}'.format(date.year),
-        '{:02d}'.format(date.month),
-        '{:02d}'.format(date.day),
-    )
 
 
 def is_valid_leaf(leaf):
