@@ -60,13 +60,14 @@ class StatusDisplay:
         return self[k]
 
     def df(self):
-        _df = []
-        for k in self.keys():
-            d = k._asdict()
-            d['object'] = self[k]
-            _df.append(d)
-        _df = pd.DataFrame(_df)
-        return _df
+        if not hasattr(self, '_df'):
+            _df = []
+            for k in self.keys():
+                d = k._asdict()
+                d['object'] = self[k]
+                _df.append(d)
+            self._df = pd.DataFrame(_df)
+        return self._df
 
     def __repr__(self):
         return repr(self._df)
