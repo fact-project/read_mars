@@ -38,10 +38,9 @@ def main():
 
     initialised = False
     for idx, run in tqdm(runs.iterrows(), total=len(runs)):
-        ganymed_file_path = ganymed_file_path_generator(
-            night=int('{:%Y%m%d}'.format(run.night_date)),
-            run=int(run.run_id)
-        )
+        night = int('{:%Y%m%d}'.format(run.night_date))
+        run = int(run.run_id)
+        ganymed_file_path = ganymed_file_path_generator(night, run)
         df = read_mars(ganymed_file_path, tree='Events')
         df['night'] = night
         df['run_id'] = run.run_id
