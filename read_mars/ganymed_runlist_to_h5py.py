@@ -28,7 +28,8 @@ parser.add_argument(
 def main():
     args = parser.parse_args()
     runs = pd.read_csv(args.runlist)
-    runs['night_date'] = pd.to_datetime(runs['night'].astype(str), format='%Y%m%d')
+    runs['night'] = runs.night.astype(int)
+    runs['run_id'] = runs.run_id.astype(int)
 
     ganymed_file_path_generator = partial(
         fact.path.tree_path,
@@ -38,11 +39,9 @@ def main():
 
     initialised = False
     for idx, run in tqdm(runs.iterrows(), total=len(runs)):
-        night = int('{:%Y%m%d}'.format(run.night_date))
-        run = int(run.run_id)
-        ganymed_file_path = ganymed_file_path_generator(night, run)
+        ganymed_file_path = ganymed_file_path_generator(run.night, run.run_id)
         df = read_mars(ganymed_file_path, tree='Events')
-        df['night'] = night
+        df['night'] = run.night
         df['run_id'] = run.run_id
 
         if not initialised:
