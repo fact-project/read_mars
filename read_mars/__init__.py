@@ -1,6 +1,5 @@
 import ROOT
 import pandas as pd
-import os
 import numpy as np
 
 result = ROOT.gSystem.Load('libmars.so')
