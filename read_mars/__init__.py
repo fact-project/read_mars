@@ -12,15 +12,6 @@ if result != 0:
 from .status_display import StatusDisplay
 
 
-def datepath(base, date):
-    return os.path.join(
-        base,
-        '{:04d}'.format(date.year),
-        '{:02d}'.format(date.month),
-        '{:02d}'.format(date.day),
-    )
-
-
 def is_valid_leaf(leaf):
     '''
     Function to select valid leaves
