@@ -2,6 +2,7 @@ import ROOT
 import pandas as pd
 import os
 import numpy as np
+from fact.instrument.camera import softid2chid
 
 result = ROOT.gSystem.Load('libmars.so')
 if result != 0:
@@ -78,3 +79,32 @@ def read_mars(filename, tree='Events', leaf_names=None):
     file.Close()
 
     return df
+
+
+def read_callisto(
+    filename,
+    tree='Events',
+    leaf_name='MSignalCam',
+    fields={
+        'charge': 'GetNumPhotons',
+        'arrival_time': 'GetArrivalTime'
+    },
+):
+    """Return a dict like fields, with numpy arrays of shape (N, 1440)
+        where N is the number of events and the numbers along
+        the 1440-axis are in CHID order.
+    """
+    file = ROOT.TFile(filename)
+    tree = file.Get(tree)
+    N = tree.GetEntries()
+    results = {name: np.zeros((N, 1440)) for name in fields}
+
+    for event_id, event in enumerate(tree):
+        leaf = getattr(event, leaf_name)
+        for softid in range(1440):
+            chid = softid2chid(softid)
+            for name, getter in fields.items():
+                results[name][event_id, chid] = getattr(
+                    leaf[softid], getter)()
+
+    return results
