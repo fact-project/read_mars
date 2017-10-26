@@ -84,27 +84,27 @@ def read_mars(filename, tree='Events', leaf_names=None):
 def read_callisto(
     filename,
     tree='Events',
-    leaf_name='MSignalCam',
     fields={
-        'charge': 'GetNumPhotons',
-        'arrival_time': 'GetArrivalTime'
-    },
+      'charge': 'MSignalCam.fPixels.fPhot',
+      'arrival_time': 'MSignalCam.fPixels.fArrivalTime'
+       },
 ):
     """Return a dict like fields, with numpy arrays of shape (N, 1440)
-        where N is the number of events and the numbers along
+     where N is the number of events and the numbers along
         the 1440-axis are in CHID order.
     """
     file = ROOT.TFile(filename)
     tree = file.Get(tree)
     N = tree.GetEntries()
-    results = {name: np.zeros((N, 1440)) for name in fields}
-
-    for event_id, event in enumerate(tree):
-        leaf = getattr(event, leaf_name)
-        for softid in range(1440):
-            chid = softid2chid(softid)
-            for name, getter in fields.items():
-                results[name][event_id, chid] = getattr(
-                    leaf[softid], getter)()
+    tree.SetEstimate(N * 1440)
+    results = {}
+    order = chid2softid(range(1440))
+ 
+    for name, getter in fields.items():
+        tree.Draw(getter,"","goff")
+        v1 = tree.GetV1()
+        v1.SetSize(N * 8 * 1440)
+        values = np.frombuffer(v1.tobytes(), dtype='float64')
+        results[name] = values.reshape(N, 1440)[:, order]
 
     return results
