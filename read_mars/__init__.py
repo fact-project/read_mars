@@ -2,7 +2,7 @@ import ROOT
 import pandas as pd
 import os
 import numpy as np
-from fact.instrument.camera import softid2chid
+from fact.instrument.camera import chid2softid
 
 result = ROOT.gSystem.Load('libmars.so')
 if result != 0:
