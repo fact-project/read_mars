@@ -22,17 +22,30 @@ def datepath(base, date):
     )
 
 
+datatypes = {"Float_t": np.float32,
+             "ULong_t": np.uint64,
+             "Long_t": np.int64,
+             "UInt_t": np.uint32,
+             "Int_t": np.int32,
+             "UShort_t": np.uint16,
+             "Short_t": np.int16,
+             "UChar_t": np.uint8,
+             "Char_t": np.int8,
+             "Bool_t": np.bool8}
+
+
 def is_valid_leaf(leaf):
-    '''
+    """
     Function to select valid leaves
 
     It returns False for leaves ending on `.` and for `fBits` and `fUniqueID`
     columns
-    '''
+    """
     return not any((
         leaf.GetName().endswith('.'),
         leaf.GetName().endswith('fBits'),
         leaf.GetName().endswith('fUniqueID'),
+        leaf.GetName().startswith('MSignalCam')
     ))
 
 
@@ -48,10 +61,14 @@ def leaves_to_numpy(tree, leaf_names):
     tree.SetEstimate(n_events + 1)  # necessary for files with more than 1 M events
     out = {}
     for leaf_name in leaf_names:
+        dtype = tree.GetLeaf(leaf_name).GetTypeName()
         tree.Draw(leaf_name, "", "goff")
         v1 = tree.GetV1()
         v1.SetSize(n_events * 8)  # a double has 8 Bytes
-        out[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64')
+        if dtype in datatypes:
+            out[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64').astype(datatypes[dtype])
+        else:
+            out[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64')
     return out
 
 
@@ -60,10 +77,14 @@ def read_mars(filename, tree='Events', leaf_names=None):
 
     read_mars uses the TTree.Draw() function to prevent calling each leaf of each event
     with a lot of overhead from python. It also omits the useless leaves fBits and fUniqueID.
-    Files with MSignalCam containers (callisto output) can not be read.
+    When reading files with MSignalCam containers (callisto output), the MSignalCam containers
+    are skipped. To get the pixel information (e.g. charge, arrival time), use read_callisto()
+    instead.
     Keyword arguments:
-    tree -- Set, which tree to read. (Default = "Events")
-    leaf_names -- Specify a list of leaf_names. (Default is None, what reads in all leaf_names)
+    tree: string
+         Set, which tree to read. (default: 'Events')
+    leaf_names: list of strings
+         Specify a list of leaf_names. (default: None, what reads in all leaf_names)
     """
 
     file = ROOT.TFile(filename)
@@ -92,19 +113,37 @@ def read_callisto(
     """Return a dict like fields, with numpy arrays of shape (N, 1440)
      where N is the number of events and the numbers along
         the 1440-axis are in CHID order.
+        
+        As default, charges and arrival_times of a callisto-file are returned.
+        In case you also want information about the width of the rise time,
+        provide a fields dict with 'time_slope': 'MSignalCam.fPixels.fTimeSlope'
+        as entry.
+        
+        keyword arguments:
+        tree: string
+             Set, which tree to read. (default: 'Events')
+        fields: dict
+             Specify the containers to read. (default:
+             {'charge': 'MSignalCam.fPixels.fPhot',
+              'arrival_time': 'MSignalCam.fPixels.fArrivalTime'})
+        
     """
     file = ROOT.TFile(filename)
     tree = file.Get(tree)
-    N = tree.GetEntries()
-    tree.SetEstimate(N * 1440)
+    n_events = tree.GetEntries()
+    tree.SetEstimate(n_events * 1440)
     results = {}
     order = chid2softid(range(1440))
  
     for name, getter in fields.items():
-        tree.Draw(getter,"","goff")
+        dtype = tree.GetLeaf(getter).GetTypeName()
+        tree.Draw(getter, "", "goff")
         v1 = tree.GetV1()
         v1.SetSize(N * 8 * 1440)
         values = np.frombuffer(v1.tobytes(), dtype='float64')
-        results[name] = values.reshape(N, 1440)[:, order]
+        if dtype in datatypes:
+            results[name] = values.reshape(n_events, 1440)[:, order].astype(datatypes[dtype])
+        else:
+            results[name] = values.reshape(n_events, 1440)[:, order]
 
     return results
