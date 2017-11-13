@@ -127,7 +127,7 @@ def read_callisto(
         dtype = tree.GetLeaf(getter).GetTypeName()
         tree.Draw(getter, "", "goff")
         v1 = tree.GetV1()
-        v1.SetSize(N * 8 * 1440)
+        v1.SetSize(n_events * 8 * 1440)
         values = np.frombuffer(v1.tobytes(), dtype='float64')
         if dtype in datatypes:
             results[name] = values.reshape(n_events, 1440)[:, order].astype(datatypes[dtype])
