@@ -49,7 +49,7 @@ def is_valid_leaf(leaf):
     ))
 
 
-def leaves_to_numpy(tree, leaf_names):
+def leaves_to_numpy(tree, leaf_names, N=1):
     # Looping over all events of a root file from python is extremely slow.
     # As the Draw function also loops over all events and
     # stores the values of the leaf in the memory,
@@ -57,18 +57,27 @@ def leaves_to_numpy(tree, leaf_names):
     # "" means, that no cut is applied and the "goff" option disables graphics.
     # GetV1() returns a pointer or memory view of the values of the leaf.
     # See eg. https://root.cern.ch/root/roottalk/roottalk03/0638.html
+
     n_events = tree.GetEntries()
     tree.SetEstimate(n_events + 1)  # necessary for files with more than 1 M events
     out = {}
+    tree_v1_dtype = np.dtype('float64')
+
+    order = chid2softid(range(N))
+
     for leaf_name in leaf_names:
-        dtype = tree.GetLeaf(leaf_name).GetTypeName()
         tree.Draw(leaf_name, "", "goff")
         v1 = tree.GetV1()
-        v1.SetSize(n_events * 8)  # a double has 8 Bytes
+        v1.SetSize(n_events * tree_v1_dtype.itemize)  # a double has 8 Bytes
+        out[leaf_name] = np.frombuffer(v1.tobytes(), dtype=tree_v1_dtype)
+
+        if N > 1:
+            out[leaf_name] = out[leaf_name].reshape(n_events, N)[:, order]
+
+        dtype = tree.GetLeaf(leaf_name).GetTypeName()
         if dtype in datatypes:
-            out[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64').astype(datatypes[dtype])
-        else:
-            out[leaf_name] = np.frombuffer(v1.tobytes(), dtype='float64')
+            out[leaf_name] = out[leaf_name].astype(datatypes[dtype])
+
     return out
 
 
@@ -105,33 +114,15 @@ def read_mars(filename, tree='Events', leaf_names=None):
 def read_callisto(
     filename,
     tree='Events',
-    fields={
-      'charge': 'MSignalCam.fPixels.fPhot',
-      'arrival_time': 'MSignalCam.fPixels.fArrivalTime'
-    },
+    fields=[
+        'MSignalCam.fPixels.fPhot',
+        'MSignalCam.fPixels.fArrivalTime'
+    ],
 ):
     """Return a dict like fields, with numpy arrays of shape (N_events, 1440)
 
         tree: which tree to read.
         fields: Specify the containers to read, e.g. add:
-            'time_slope': 'MSignalCam.fPixels.fTimeSlope'
+            'MSignalCam.fPixels.fTimeSlope'
     """
-    file = ROOT.TFile(filename)
-    tree = file.Get(tree)
-    n_events = tree.GetEntries()
-    tree.SetEstimate(n_events * 1440)
-    results = {}
-    order = chid2softid(range(1440))
-
-    for name, getter in fields.items():
-        tree.Draw(getter, "", "goff")
-        v1 = tree.GetV1()
-        v1.SetSize(n_events * 8 * 1440)
-        values = np.frombuffer(v1.tobytes(), dtype='float64')
-        results[name] = values.reshape(n_events, 1440)[:, order]
-
-        dtype = tree.GetLeaf(getter).GetTypeName()
-        if dtype in datatypes:
-            results[name] = results[name].astype(datatypes[dtype])
-
-    return results
+    return leaves_to_numpy(ROOT.TFile(filename).Get(tree), fields, N=1440)
