@@ -59,7 +59,7 @@ def leaves_to_numpy(tree, leaf_names, N=1):
     # See eg. https://root.cern.ch/root/roottalk/roottalk03/0638.html
 
     n_events = tree.GetEntries()
-    tree.SetEstimate(n_events + 1)  # necessary for files with more than 1 M events
+    tree.SetEstimate((n_events+1) * N)  # necessary for files with more than 1 M events
     out = {}
     tree_v1_dtype = np.dtype('float64')
 
@@ -68,7 +68,7 @@ def leaves_to_numpy(tree, leaf_names, N=1):
     for leaf_name in leaf_names:
         tree.Draw(leaf_name, "", "goff")
         v1 = tree.GetV1()
-        v1.SetSize(n_events * tree_v1_dtype.itemize)  # a double has 8 Bytes
+        v1.SetSize(n_events * tree_v1_dtype.itemsize * N)  # a double has 8 Bytes
         out[leaf_name] = np.frombuffer(v1.tobytes(), dtype=tree_v1_dtype)
 
         if N > 1:
@@ -125,4 +125,6 @@ def read_callisto(
         fields: Specify the containers to read, e.g. add:
             'MSignalCam.fPixels.fTimeSlope'
     """
-    return leaves_to_numpy(ROOT.TFile(filename).Get(tree), fields, N=1440)
+    file = ROOT.TFile(filename)
+    tree = file.Get(tree)
+    return leaves_to_numpy(tree, fields, N=1440)
