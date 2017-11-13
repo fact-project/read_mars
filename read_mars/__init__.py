@@ -1,8 +1,10 @@
 import ROOT
-import pandas as pd
-import os
 import numpy as np
 from fact.instrument.camera import chid2softid
+from collections import namedtuple
+import os
+from contextlib import contextmanager
+from contextlib import redirect_stdout, redirect_stderr
 
 result = ROOT.gSystem.Load('libmars.so')
 if result != 0:
@@ -12,44 +14,75 @@ if result != 0:
 # import this only after libmars.so
 from .status_display import StatusDisplay
 
+DEV_NULL = open(os.devnull, 'w')
 
-def datepath(base, date):
-    return os.path.join(
-        base,
-        '{:04d}'.format(date.year),
-        '{:02d}'.format(date.month),
-        '{:02d}'.format(date.day),
-    )
+root_TypeName_to_numpy_dtype = {
+    "Float_t": np.float32,
+    "ULong_t": np.uint64,
+    "Long_t": np.int64,
+    "UInt_t": np.uint32,
+    "Int_t": np.int32,
+    "UShort_t": np.uint16,
+    "Short_t": np.int16,
+    "UChar_t": np.uint8,
+    "Char_t": np.int8,
+    "Bool_t": np.bool8,
+}
 
-
-datatypes = {"Float_t": np.float32,
-             "ULong_t": np.uint64,
-             "Long_t": np.int64,
-             "UInt_t": np.uint32,
-             "Int_t": np.int32,
-             "UShort_t": np.uint16,
-             "Short_t": np.int16,
-             "UChar_t": np.uint8,
-             "Char_t": np.int8,
-             "Bool_t": np.bool8}
+LeafInfo = namedtuple('LeafInfo', 'tree_name leaf_name dtype')
 
 
-def is_valid_leaf(leaf):
-    """
-    Function to select valid leaves
-
-    It returns False for leaves ending on `.` and for `fBits` and `fUniqueID`
-    columns
-    """
-    return not any((
-        leaf.GetName().endswith('.'),
-        leaf.GetName().endswith('fBits'),
-        leaf.GetName().endswith('fUniqueID'),
-        leaf.GetName().startswith('MSignalCam')
-    ))
+def leaves_of_tree(tree):
+    tree_name = tree.GetName()
+    leaves = []
+    for leaf in tree.GetListOfLeaves():
+        leaf_name = leaf.GetName()
+        dtype = tree.GetLeaf(leaf_name).GetTypeName()
+        if dtype in root_TypeName_to_numpy_dtype:
+            dtype = root_TypeName_to_numpy_dtype[dtype]
+        leaves.append(LeafInfo(tree_name, leaf_name, dtype))
+    return leaves
 
 
-def leaves_to_numpy(tree, leaf_names, N=1):
+class TreeFile:
+
+    def __init__(self, path):
+        self.path = path
+        self.file = ROOT.TFile(path)
+
+    def to_dict(self):
+        results = {}
+        with redirect_stdout(DEV_NULL), redirect_stderr(DEV_NULL):
+            for leaf in self.leaves_of_file():
+                tree = self.file.Get(leaf.tree_name)
+                try:
+                    size = 1
+                    if 'MSignalCam' in leaf.leaf_name:
+                        size = 1440
+                    results[leaf.leaf_name] = leaf_to_numpy(tree, leaf.leaf_name, size)
+                except ValueError:
+                    pass
+        return results
+
+    def __del__(self):
+        self.file.Close()
+
+    def tree_names(self):
+        _tree_names = []
+        for key in self.file.GetListOfKeys():
+            if key.GetClassName() == 'TTree':
+                _tree_names.append(key.GetName())
+        return _tree_names
+
+    def leaves_of_file(self):
+        leaves = []
+        for tree_name in self.tree_names():
+            tree = self.file.Get(tree_name)
+            leaves.extend(leaves_of_tree(tree))
+        return leaves
+
+
+def leaf_to_numpy(tree, leaf_name, N=1):
     # Looping over all events of a root file from python is extremely slow.
     # As the Draw function also loops over all events and
     # stores the values of the leaf in the memory,
@@ -58,71 +91,24 @@ def leaves_to_numpy(tree, leaf_names, N=1):
     # GetV1() returns a pointer or memory view of the values of the leaf.
     # See eg. https://root.cern.ch/root/roottalk/roottalk03/0638.html
 
+    assert N in [1, 1440]
+
     n_events = tree.GetEntries()
-    tree.SetEstimate(n_events + 1)  # necessary for files with more than 1 M events
-    out = {}
+    tree.SetEstimate((n_events + 1) * N)
+
+    tree.Draw(leaf_name, "", "goff")
+    v1 = tree.GetV1()
+
     tree_v1_dtype = np.dtype('float64')
+    v1.SetSize(n_events * tree_v1_dtype.itemsize * N)
+    out = np.frombuffer(v1.tobytes(), dtype=tree_v1_dtype)
 
-    order = chid2softid(range(N))
+    if N > 1:
+        order = chid2softid(range(N))
+        out = out.reshape(n_events, N)[:, order]
 
-    for leaf_name in leaf_names:
-        tree.Draw(leaf_name, "", "goff")
-        v1 = tree.GetV1()
-        v1.SetSize(n_events * tree_v1_dtype.itemize)  # a double has 8 Bytes
-        out[leaf_name] = np.frombuffer(v1.tobytes(), dtype=tree_v1_dtype)
-
-        if N > 1:
-            out[leaf_name] = out[leaf_name].reshape(n_events, N)[:, order]
-
-        dtype = tree.GetLeaf(leaf_name).GetTypeName()
-        if dtype in datatypes:
-            out[leaf_name] = out[leaf_name].astype(datatypes[dtype])
+    dtype = tree.GetLeaf(leaf_name).GetTypeName()
+    if dtype in root_TypeName_to_numpy_dtype:
+        out = out.astype(root_TypeName_to_numpy_dtype[dtype])
 
     return out
-
-
-def read_mars(filename, tree='Events', leaf_names=None):
-    """Return a Pandas DataFrame of a MARS (eg. star or ganymed output) root file.
-
-    read_mars uses the TTree.Draw() function to prevent calling each leaf of each event
-    with a lot of overhead from python. It also omits the useless leaves fBits and fUniqueID.
-    When reading files with MSignalCam containers (callisto output), the MSignalCam containers
-    are skipped. To get the pixel information (e.g. charge, arrival time), use read_callisto()
-    instead.
-    Keyword arguments:
-    tree: string
-         Set, which tree to read. (default: 'Events')
-    leaf_names: list of strings
-         Specify a list of leaf_names. (default: None, what reads in all leaf_names)
-    """
-
-    file = ROOT.TFile(filename)
-    tree = file.Get(tree)
-
-    if not leaf_names:
-        leaf_names = [
-            leaf.GetName()
-            for leaf in filter(is_valid_leaf, tree.GetListOfLeaves())
-        ]
-
-    df = pd.DataFrame(leaves_to_numpy(tree, leaf_names))
-    file.Close()
-
-    return df
-
-
-def read_callisto(
-    filename,
-    tree='Events',
-    fields=[
-        'MSignalCam.fPixels.fPhot',
-        'MSignalCam.fPixels.fArrivalTime'
-    ],
-):
-    """Return a dict like fields, with numpy arrays of shape (N_events, 1440)
-
-        tree: which tree to read.
-        fields: Specify the containers to read, e.g. add:
-            'MSignalCam.fPixels.fTimeSlope'
-    """
-    return leaves_to_numpy(ROOT.TFile(filename).Get(tree), fields, N=1440)
