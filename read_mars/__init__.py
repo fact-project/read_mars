@@ -3,7 +3,6 @@ import numpy as np
 from fact.instrument.camera import chid2softid
 from collections import namedtuple
 import os
-from contextlib import contextmanager
 from contextlib import redirect_stdout, redirect_stderr
 import warnings
 
@@ -14,8 +13,6 @@ if result != 0:
     )
 # import this only after libmars.so
 from .status_display import StatusDisplay
-
-
 
 
 DEV_NULL = open(os.devnull, 'w')
