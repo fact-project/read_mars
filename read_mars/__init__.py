@@ -108,19 +108,13 @@ def read_callisto(
     fields={
       'charge': 'MSignalCam.fPixels.fPhot',
       'arrival_time': 'MSignalCam.fPixels.fArrivalTime'
-       },
+    },
 ):
-    """Return a dict like fields, with numpy arrays of shape (N, 1440)
-     where N is the number of events and the numbers along
-        the 1440-axis are in CHID order.
-
-        As default, charges and arrival_times of a callisto-file are returned.
-        In case you also want information about the width of the rise time,
-        provide a fields dict with 'time_slope': 'MSignalCam.fPixels.fTimeSlope'
-        as entry.
+    """Return a dict like fields, with numpy arrays of shape (N_events, 1440)
 
         tree: which tree to read.
-        fields: Specify the containers to read.
+        fields: Specify the containers to read, e.g. add:
+            'time_slope': 'MSignalCam.fPixels.fTimeSlope'
     """
     file = ROOT.TFile(filename)
     tree = file.Get(tree)
