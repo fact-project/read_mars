@@ -5,6 +5,7 @@ from collections import namedtuple
 import os
 from contextlib import contextmanager
 from contextlib import redirect_stdout, redirect_stderr
+import warnings
 
 result = ROOT.gSystem.Load('libmars.so')
 if result != 0:
@@ -13,6 +14,9 @@ if result != 0:
     )
 # import this only after libmars.so
 from .status_display import StatusDisplay
+
+
+
 
 DEV_NULL = open(os.devnull, 'w')
 
@@ -53,15 +57,21 @@ class TreeFile:
     def to_dict(self):
         results = {}
         with redirect_stdout(DEV_NULL), redirect_stderr(DEV_NULL):
-            for leaf in self.leaves_of_file():
-                tree = self.file.Get(leaf.tree_name)
-                try:
-                    size = 1
-                    if 'MSignalCam' in leaf.leaf_name:
-                        size = 1440
-                    results[leaf.leaf_name] = leaf_to_numpy(tree, leaf.leaf_name, size)
-                except ValueError:
-                    pass
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+
+                for leaf in self.leaves_of_file():
+                    tree = self.file.Get(leaf.tree_name)
+                    try:
+                        size = 1
+                        if 'MSignalCam' in leaf.leaf_name:
+                            size = 1440
+                        results[leaf.leaf_name] = leaf_to_numpy(
+                            tree,
+                            leaf.leaf_name,
+                            size)
+                    except ValueError:
+                        pass
         return results
 
     def __del__(self):
