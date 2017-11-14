@@ -63,25 +63,19 @@ def leaves(file):
     return _leaves
 
 
-class TreeFile:
+def tree_file_to_dict(path):
+    file = ROOT.TFile(path)
 
-    def __init__(self, path):
-        self.path = path
-        self.file = ROOT.TFile(path)
+    results = {}
+    for leaf in leaves(file):
+        tree = file.Get(leaf.tree_name)
+        try:
+            results[leaf.leaf_name] = any_leaf_to_numpy(tree, leaf)
+        except ValueError:
+            pass
 
-    def to_dict(self):
-        results = {}
-        for leaf in leaves(self.file):
-            tree = self.file.Get(leaf.tree_name)
-            try:
-                results[leaf.leaf_name] = any_leaf_to_numpy(tree, leaf)
-            except ValueError:
-                pass
-        return results
-
-    def __del__(self):
-        self.file.Close()
-
+    file.Close()
+    return results
 
 
 def any_leaf_to_numpy(tree, leaf):

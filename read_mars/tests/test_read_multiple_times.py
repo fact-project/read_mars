@@ -30,7 +30,7 @@ def test_TreeFile():
         'read_mars',
         'tests/resources/20171022_215_C.root')
 
-    d = read_mars.TreeFile(path).to_dict()
+    d = read_mars.tree_file_to_dict(path)
 
     assert len(d) == 69
     assert d['MSignalCam.fPixels.fPhot'].shape == (912, 1440)
