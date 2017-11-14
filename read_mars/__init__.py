@@ -8,4 +8,8 @@ if result != 0:
 
 # import this only after libmars.so
 from .status_display import StatusDisplay
-from .tree_file import tree_file_to_dict
+from .tree_file import (
+    tree_file_to_dict,
+    LeafInfo,
+    any_leaf_to_numpy,
+)

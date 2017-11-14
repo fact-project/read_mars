@@ -1,3 +1,34 @@
+"""
+function to read a "Mars tree file", i.e. a file containing one or
+more TTrees possibly containing Mars classes.
+
+Example:
+Looking at all the leaves in a file, their shape and their data-type
+This can already tell you a lot about an unknown file.
+
+    from read_mars import tree_file_to_dict
+    d = tree_file_to_dict('20171022_215_C.root')
+    for leaf_name, nd_array in d.items():
+        print(leaf_name, nd_array.shape, nd_array.dtype)
+
+
+In case you do not want to read all the leaves, e.g. for speed optimization,
+or to reduce the memory footprint of your application.
+Assume you want to only read one leaf, and you know its:
+    * tree_name
+    * leaf_name and
+    * data_type
+
+Then you can do:
+
+    from read_mars import ROOT, LeafInfo, any_leaf_to_numpy
+    my_leaf = any_leaf_to_numpy(
+        ROOT.TFile('20171022_215_C.root'),
+        LeafInfo('Events', 'MFoo.fBar.fBaz', np.float32)
+    )
+    print(my_leaf)
+
+"""
 import ROOT
 import numpy as np
 from fact.instrument.camera import chid2softid
@@ -16,9 +47,8 @@ def tree_file_to_dict(path):
 
     results = {}
     for leaf in leaves(file):
-        tree = file.Get(leaf.tree_name)
         try:
-            results[leaf.leaf_name] = any_leaf_to_numpy(tree, leaf)
+            results[leaf.leaf_name] = any_leaf_to_numpy(file, leaf)
         except ValueError:
             pass
 
@@ -69,12 +99,14 @@ root_TypeName_to_numpy_dtype = {
 LeafInfo = namedtuple('LeafInfo', 'tree_name leaf_name dtype')
 
 
-def any_leaf_to_numpy(tree, leaf):
+def any_leaf_to_numpy(file, leaf):
 
     # We try to convert any leaf to numpy, no matter what,
     # if it does not work, we throw ValueError,
     # but root is very verbose about it, while an exception would be enough
     # so we simply suppress all output
+
+    tree = file.Get(leaf.tree_name)
     with redirect_stdout(DEV_NULL), redirect_stderr(DEV_NULL):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
