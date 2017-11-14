@@ -16,6 +16,7 @@ from .status_display import StatusDisplay
 
 
 DEV_NULL = open(os.devnull, 'w')
+CHID_2_SOFTID = chid2softid(range(1440))
 
 root_TypeName_to_numpy_dtype = {
     "Float_t": np.float32,
@@ -89,7 +90,7 @@ class TreeFile:
         return leaves
 
 
-def leaf_to_numpy(tree, leaf_name, N=1):
+def leaf_to_numpy(tree, leaf_name, has_one_per_pixel=False):
     # Looping over all events of a root file from python is extremely slow.
     # As the Draw function also loops over all events and
     # stores the values of the leaf in the memory,
@@ -98,9 +99,8 @@ def leaf_to_numpy(tree, leaf_name, N=1):
     # GetV1() returns a pointer or memory view of the values of the leaf.
     # See eg. https://root.cern.ch/root/roottalk/roottalk03/0638.html
 
-    assert N in [1, 1440]
-
     n_events = tree.GetEntries()
+    N = 1440 if has_one_per_pixel else 1
     tree.SetEstimate((n_events + 1) * N)
 
     tree.Draw(leaf_name, "", "goff")
@@ -110,9 +110,8 @@ def leaf_to_numpy(tree, leaf_name, N=1):
     v1.SetSize(n_events * tree_v1_dtype.itemsize * N)
     out = np.frombuffer(v1.tobytes(), dtype=tree_v1_dtype)
 
-    if N > 1:
-        order = chid2softid(range(N))
-        out = out.reshape(n_events, N)[:, order]
+    if has_one_per_pixel:
+        out = out.reshape(n_events, N)[:, CHID_2_SOFTID]
 
     dtype = tree.GetLeaf(leaf_name).GetTypeName()
     if dtype in root_TypeName_to_numpy_dtype:
