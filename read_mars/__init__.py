@@ -62,13 +62,10 @@ class TreeFile:
                 for leaf in self.leaves_of_file():
                     tree = self.file.Get(leaf.tree_name)
                     try:
-                        size = 1
                         if 'MSignalCam' in leaf.leaf_name:
-                            size = 1440
-                        results[leaf.leaf_name] = leaf_to_numpy(
-                            tree,
-                            leaf.leaf_name,
-                            size)
+                            results[leaf.leaf_name] = MSignalCam_to_numpy(tree, leaf.leaf_name)
+                        else:
+                            results[leaf.leaf_name] = leaf_to_numpy(tree, leaf.leaf_name)
                     except ValueError:
                         pass
         return results
@@ -91,16 +88,13 @@ class TreeFile:
         return leaves
 
 
-def leaf_to_numpy(tree, leaf_name, has_one_per_pixel=False):
-    if has_one_per_pixel:
-        out = v1_trick(tree, leaf_name, N_PIXEL)
-        out = out.reshape(-1, N_PIXEL)[:, CHID_2_SOFTID]
-    else:
-        out = v1_trick(tree, leaf_name, 1)
+def MSignalCam_to_numpy(tree, leaf_name):
+    out = leaf_to_numpy(tree, leaf_name, N_PIXEL)
+    out = out.reshape(-1, N_PIXEL)[:, CHID_2_SOFTID]
     return out
 
 
-def v1_trick(tree, leaf_name, N=1):
+def leaf_to_numpy(tree, leaf_name, N=1):
     # Looping over all events of a root file from python is extremely slow.
     # As the Draw function also loops over all events and
     # stores the values of the leaf in the memory,
