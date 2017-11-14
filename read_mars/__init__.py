@@ -55,6 +55,14 @@ def tree_names(file):
     return _tree_names
 
 
+def leaves(file):
+    _leaves = []
+    for tree_name in tree_names(file):
+        tree = file.Get(tree_name)
+        _leaves.extend(leaves_of_tree(tree))
+    return _leaves
+
+
 class TreeFile:
 
     def __init__(self, path):
@@ -63,7 +71,7 @@ class TreeFile:
 
     def to_dict(self):
         results = {}
-        for leaf in self.leaves_of_file():
+        for leaf in leaves(self.file):
             tree = self.file.Get(leaf.tree_name)
             try:
                 results[leaf.leaf_name] = any_leaf_to_numpy(tree, leaf)
@@ -74,12 +82,6 @@ class TreeFile:
     def __del__(self):
         self.file.Close()
 
-    def leaves_of_file(self):
-        leaves = []
-        for tree_name in tree_names(self.file):
-            tree = self.file.Get(tree_name)
-            leaves.extend(leaves_of_tree(tree))
-        return leaves
 
 
 def any_leaf_to_numpy(tree, leaf):
