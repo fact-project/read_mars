@@ -55,19 +55,12 @@ class TreeFile:
 
     def to_dict(self):
         results = {}
-        with redirect_stdout(DEV_NULL), redirect_stderr(DEV_NULL):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-
-                for leaf in self.leaves_of_file():
-                    tree = self.file.Get(leaf.tree_name)
-                    try:
-                        if 'MSignalCam' in leaf.leaf_name:
-                            results[leaf.leaf_name] = MSignalCam_to_numpy(tree, leaf.leaf_name)
-                        else:
-                            results[leaf.leaf_name] = leaf_to_numpy(tree, leaf.leaf_name)
-                    except ValueError:
-                        pass
+        for leaf in self.leaves_of_file():
+            tree = self.file.Get(leaf.tree_name)
+            try:
+                results[leaf.leaf_name] = any_leaf_to_numpy(tree, leaf)
+            except ValueError:
+                pass
         return results
 
     def __del__(self):
@@ -86,6 +79,23 @@ class TreeFile:
             tree = self.file.Get(tree_name)
             leaves.extend(leaves_of_tree(tree))
         return leaves
+
+
+def any_leaf_to_numpy(tree, leaf):
+
+    # We try to convert any leaf to numpy, no matter what,
+    # if it does not work, we throw ValueError,
+    # but root is very verbose about it, while an exception would be enough
+    # so we simply suppress all output
+    with redirect_stdout(DEV_NULL), redirect_stderr(DEV_NULL):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+
+            if 'MSignalCam' in leaf.leaf_name:
+                return MSignalCam_to_numpy(tree, leaf.leaf_name)
+            else:
+                return leaf_to_numpy(tree, leaf.leaf_name)
+
 
 
 def MSignalCam_to_numpy(tree, leaf_name):
@@ -118,3 +128,4 @@ def leaf_to_numpy(tree, leaf_name, N=1):
         out = out.astype(root_TypeName_to_numpy_dtype[dtype])
 
     return out
+
