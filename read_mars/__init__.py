@@ -47,6 +47,14 @@ def leaves_of_tree(tree):
     return leaves
 
 
+def tree_names(file):
+    _tree_names = []
+    for key in file.GetListOfKeys():
+        if key.GetClassName() == 'TTree':
+            _tree_names.append(key.GetName())
+    return _tree_names
+
+
 class TreeFile:
 
     def __init__(self, path):
@@ -66,16 +74,9 @@ class TreeFile:
     def __del__(self):
         self.file.Close()
 
-    def tree_names(self):
-        _tree_names = []
-        for key in self.file.GetListOfKeys():
-            if key.GetClassName() == 'TTree':
-                _tree_names.append(key.GetName())
-        return _tree_names
-
     def leaves_of_file(self):
         leaves = []
-        for tree_name in self.tree_names():
+        for tree_name in tree_names(self.file):
             tree = self.file.Get(tree_name)
             leaves.extend(leaves_of_tree(tree))
         return leaves
