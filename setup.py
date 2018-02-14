@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='read_mars',
-    version='0.0.5',
+    version='0.0.6',
     author='Maximilian Nöthe',
     author_email='maximilian.noethe@tu-dortmund.de',
     packages=['read_mars'],
