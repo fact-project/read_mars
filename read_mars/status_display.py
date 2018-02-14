@@ -33,8 +33,6 @@ StatusDisplayKey = namedtuple(
 class StatusDisplay:
     def __init__(self, path, transform=True):
         self.path = path
-        self.date = fact.run2dt(self.path.split('/')[-1].split('_')[0]).date()
-        self.run = int(self.path.split('/')[-1].split('_')[1])
 
         self.tfile = ROOT.TFile(path)
         self.status_array = self.tfile.Get('MStatusDisplay')
