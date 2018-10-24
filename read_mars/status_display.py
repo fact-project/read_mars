@@ -1,10 +1,17 @@
 import ROOT
-import fact
 import pandas as pd
 from collections import namedtuple
 from collections import OrderedDict
 from root_numpy import hist2array
 from fact.instrument.camera import reorder_softid2chid
+
+result = ROOT.gSystem.Load('libmars.so')
+if result != 0:
+    raise ImportError(
+        'Could not load libmars, Make sure to set your "LD_LIBRARY_PATH"'
+    )
+
+
 __all__ = ['StatusDisplay']
 
 

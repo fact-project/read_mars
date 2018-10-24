@@ -16,16 +16,13 @@ parser = ArgumentParser(description=__doc__)
 parser.add_argument('inputfile')
 parser.add_argument('outputfile')
 parser.add_argument('-t', '--tree', help='Tree to extract', default='Events')
-parser.add_argument(
-    '--ganymed-base', dest='ganymed_base',
-    default='/gpfs0/fact/processing/data.r18753/ganymed_run/'
-)
+parser.add_argument('-a', '--append', action='store_true', help='Append to file instead of overwrite')
 
 
 def main():
     args = parser.parse_args()
-    df = read_mars(args.inputfile, tree=args.tree, verbose=True)
-    to_h5py(args.outputfile, df, key=args.tree, mode='w')
+    df = read_mars(args.inputfile, tree=args.tree)
+    to_h5py(df, args.outputfile, key=args.tree, mode='a' if args.append else 'w')
 
 
 if __name__ == '__main__':

@@ -3,15 +3,15 @@ from setuptools import setup
 
 setup(
     name='read_mars',
-    version='0.0.6',
+    version='0.1.0',
     author='Maximilian Nöthe',
     author_email='maximilian.noethe@tu-dortmund.de',
     packages=['read_mars'],
     install_requires=[
-        'pyfact>=0.9.4',
+        'uproot',
+        'pyfact>=0.16.0',
         'pandas',
         'numpy',
-        'root_numpy',
     ],
     entry_points={
         'console_scripts': [
